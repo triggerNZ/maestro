@@ -17,7 +17,7 @@ resolvers ++= Seq(
   "commbank-releases" at "http://commbank.artifactoryonline.com/commbank/ext-releases-local"
 )
 
-val uniformVersion = "0.7.0-20150113035718-6641c80"
+val uniformVersion = "0.8.0-20150211054616-ea17d0c-CDH5"
 
 addSbtPlugin("au.com.cba.omnia" % "uniform-core"       % uniformVersion)
 
@@ -27,4 +27,4 @@ addSbtPlugin("au.com.cba.omnia" % "uniform-thrift"     % uniformVersion)
 
 addSbtPlugin("au.com.cba.omnia" % "uniform-assembly"   % uniformVersion)
 
-addSbtPlugin("au.com.cba.omnia" % "humbug-plugin"      % "0.3.0-20150113043431-3dc2531")
+addSbtPlugin("au.com.cba.omnia" % "humbug-plugin"      % "0.4.0-20150212002030-09a79ac-CDH5")
