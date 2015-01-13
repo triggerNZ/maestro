@@ -15,16 +15,14 @@
 package au.com.cba.omnia.maestro.core
 package validate
 
-import test.Arbitraries._
-import au.com.cba.omnia.maestro.core.data._
-
 import scalaz._, Scalaz._
-import scalaz.scalacheck.ScalazProperties._
 
-import org.scalacheck._, Arbitrary._
+import org.scalacheck.Arbitrary
 
+import au.com.cba.omnia.maestro.core.data.Field
+import au.com.cba.omnia.maestro.core.test.Spec
 
-object ValidatorSpec extends test.Spec { def is = s2"""
+object ValidatorSpec extends Spec { def is = s2"""
 
 Validator properties
 ====================
@@ -69,5 +67,5 @@ Validator properties
     validator.run(p) must_== NonEmptyList("[name]", "[age]").failure })
 
   implicit def PersonArbitrary: Arbitrary[Person] =
-    Arbitrary(arbitrary[(String, Int)] map Person.tupled)
+    Arbitrary(Arbitrary.arbitrary[(String, Int)] map Person.tupled)
 }

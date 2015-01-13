@@ -15,16 +15,13 @@
 package au.com.cba.omnia.maestro.core
 package validate
 
-import test.Arbitraries._
-import au.com.cba.omnia.maestro.core.data._
-
 import scalaz._, Scalaz._
-import scalaz.scalacheck.ScalazProperties._
 
-import org.scalacheck._, Arbitrary._
+import org.scalacheck.{Arbitrary, Gen}
 
+import au.com.cba.omnia.maestro.core.test.Spec
 
-object CheckSpec extends test.Spec { def is = s2"""
+object CheckSpec extends Spec { def is = s2"""
 
 Check properties
 ================

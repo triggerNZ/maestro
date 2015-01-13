@@ -16,14 +16,14 @@ package au.com.cba.omnia.maestro.core
 package codec
 
 import scalaz._, Scalaz._
-import scalaz.scalacheck.ScalazProperties._
+import scalaz.scalacheck.ScalazProperties.monad
 
-import org.scalacheck._, Arbitrary._
+import org.scalacheck.Arbitrary
 
-import au.com.cba.omnia.maestro.core.data._
+import au.com.cba.omnia.maestro.core.test.Spec
 import au.com.cba.omnia.maestro.core.test.Arbitraries._
 
-object DecodeSpec extends test.Spec { def is = s2"""
+object DecodeSpec extends Spec { def is = s2"""
 
 Decode laws
 ===========
