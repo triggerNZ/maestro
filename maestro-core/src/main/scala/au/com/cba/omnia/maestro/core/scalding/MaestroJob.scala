@@ -14,7 +14,7 @@
 
 package au.com.cba.omnia.maestro.core.scalding
 
-import org.slf4j.Logger
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.control.NonFatal
 
@@ -68,7 +68,7 @@ trait MaestroJob extends Serializable {
   def attemptsExceeded: Execution[JobStatus]
 
   /** The logger to use for this application */
-  def logger: Logger
+  def logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   def main(args: Array[String]) {
     val status = try {
