@@ -7,8 +7,8 @@
 #  vagrant provisioner.
 #
 #  Before we can run puppet, we need to:
-#    1. Test and configure the proxy, if required.
-#    2. Install any required certificates.
+#    1. Install any required certificates.
+#    2. Test and configure the proxy, if required.
 #    3. Download and install the puppet repository metapackage.
 #    4. Update the apt package list.
 #    5. Install puppet.
@@ -28,61 +28,10 @@ PUPPET_PKG_NAME="puppetlabs-release-wheezy.deb"
 
 ECHO="echo [maestro-init]"
 
-#
-# Proxy
-#
-
-if [ $PROXY_ENABLE == "yes" ]
-then
-    $ECHO Configuring proxy:
-    
-    $ECHO "  Testing connectivity..."
-    exec 6<>/dev/tcp/$PROXY_HOST/$PROXY_PORT
-    E=$?
-    if [ $E -eq 0 ]
-    then
-        $ECHO "  ...connection established to $PROXY."
-        # Always remember to clean up :)
-        exec 6>&-
-        exec 6<&-
-    else
-        $ECHO "  ...FAILED to establish a connection to $PROXY \($E\)."
-        $ECHO Unable to connect to proxy server. Possible causes:
-        $ECHO   - Forgot to add 'Gateway yes' to /usr/local/etc/cntlm.conf
-        $ECHO   - Forgot to restart cntlm after modifying cntlm.conf
-        $ECHO   - Changed network settings in Vagrantfile but not bootstrap.sh
-        exit $E
-    fi
-    
-    $ECHO "  Configuring system profile..."
-    if [ ! -f $PROXY_PROFILE ]
-    then
-        touch $PROXY_PROFILE
-        $ECHO export http_proxy=$PROXY_HTTP >> $PROXY_PROFILE
-        $ECHO export https_proxy=$PROXY_HTTPS >> $PROXY_PROFILE
-        $ECHO "  ...created $PROXY_PROFILE."
-    else
-        $ECHO "  ...file $PROXY_PROFILE exists, skipping."
-    fi
-    
-    $ECHO "    Configuring apt..."
-    if [ ! -f $PROXY_APT ]
-    then
-        touch $PROXY_APT
-        $ECHO Acquire::http::Proxy \"$PROXY_HTTP\"\; >> $PROXY_APT
-        $ECHO Acquire::https::Proxy \"$PROXY_HTTPS\"\; >> $PROXY_APT
-        $ECHO "  ...created $PROXY_APT."
-    else
-        $ECHO "  ...file $PROXY_APT exists, skipping."
-    fi
-    
-    . $PROXY_PROFILE # We'll need this for wget in the next step
-fi
 
 #
 # Certificates
 #
-
 
 $ECHO Installing certificates...
 
@@ -104,11 +53,63 @@ else
     E=$?
     if [ $E -eq 0 ]
     then
-        $ECHO ...installed $N_CERTS certificate\(s\).
+        $ECHO "...installed $N_CERTS certificate(s)".
     else
-        $ECHO FAILED \($E\).
+        $ECHO "...FAILED ($E)".
         exit $E
     fi
+fi
+
+
+#
+# Proxy
+#
+
+if [ $PROXY_ENABLE == "yes" ]
+then
+    $ECHO Configuring proxy:
+    
+    $ECHO "  Testing connectivity..."
+    exec 6<>/dev/tcp/$PROXY_HOST/$PROXY_PORT
+    E=$?
+    if [ $E -eq 0 ]
+    then
+        $ECHO "  ...connection established to $PROXY."
+        # Always remember to clean up :)
+        exec 6>&-
+        exec 6<&-
+    else
+        $ECHO "  ...FAILED to establish a connection to $PROXY ($E)."
+        $ECHO "Unable to connect to proxy server. Possible causes:"
+        $ECHO "  - Forgot to add 'Gateway yes' to /usr/local/etc/cntlm.conf"
+        $ECHO "  - Forgot to restart cntlm after modifying cntlm.conf"
+        $ECHO "  - Changed network settings in Vagrantfile but not bootstrap.sh"
+        exit $E
+    fi
+    
+    $ECHO "  Configuring system profile..."
+    if [ ! -f $PROXY_PROFILE ]
+    then
+        touch $PROXY_PROFILE
+        echo export http_proxy=$PROXY_HTTP >> $PROXY_PROFILE
+        echo export https_proxy=$PROXY_HTTPS >> $PROXY_PROFILE
+        $ECHO "  ...created $PROXY_PROFILE."
+    else
+        $ECHO "  ...file $PROXY_PROFILE exists, skipping."
+    fi
+    
+    $ECHO "  Configuring apt..."
+    if [ ! -f $PROXY_APT ]
+    then
+        touch $PROXY_APT
+        echo Acquire::http::Proxy \"$PROXY_HTTP\"\; >> $PROXY_APT
+        echo Acquire::https::Proxy \"$PROXY_HTTPS\"\; >> $PROXY_APT
+        $ECHO "  ...created $PROXY_APT."
+    else
+        $ECHO "  ...file $PROXY_APT exists, skipping."
+    fi
+    
+    . $PROXY_PROFILE # We'll need this for wget in the next step
 fi
 
 
@@ -125,7 +126,7 @@ if [ $E -eq 0 ]
 then
     $ECHO "  ...saved to /tmp/$PUPPET_PKG_NAME."
 else
-    $ECHO "  ...FAILED \($E\)."
+    $ECHO "  ...FAILED ($E)."
     exit $E
 fi
 
@@ -136,7 +137,7 @@ if [ $E -eq 0 ]
 then
     $ECHO "  ...installed."
 else
-    $ECHO "  ...FAILED \($E\)."
+    $ECHO "  ...FAILED ($E)."
     exit $E
 fi
 
@@ -147,7 +148,7 @@ if [ $E -eq 0 ]
 then
     $ECHO "  ...updated."
 else
-    $ECHO "  ...FAILED \($E\)."
+    $ECHO "  ...FAILED ($E)."
     exit $E
 fi
 
@@ -158,7 +159,7 @@ if [ $E -eq 0 ]
 then
     $ECHO "  ...installed."
 else
-    $ECHO "  ...FAILED \($E\)."
+    $ECHO "  ...FAILED ($E)."
     exit $E
 fi
 
