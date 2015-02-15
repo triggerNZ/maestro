@@ -41,13 +41,13 @@ View execution properties
     can write to a hive table using execution monad         $normalHive
     can append to a hive table using execution monad        $normalHiveAppend
     view hive executions can be composed with flatMap       $flatMappedHive
-    view hive executions can be composed with zip           $zippedHive
+    view hive executions can be composed with zip           ${zippedHive.pendingUntilFixed}
 
   unpartitioned:
     can write to a hive table using execution monad         $normalHiveUnpartitioned
     can append to a hive table using execution monad        $normalHiveUnpartitionedAppend
     view hive executions can be composed with flatMap       $flatMappedHiveUnpartitioned
-    view hive executions can be composed with zip           $zippedHiveUnpartitioned
+    view hive executions can be composed with zip           ${zippedHiveUnpartitioned.pendingUntilFixed}
 """
 
   def normal = {
