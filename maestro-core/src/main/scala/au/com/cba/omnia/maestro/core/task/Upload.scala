@@ -135,7 +135,7 @@ trait Upload {
 
     val result = Upload.uploadImpl(
       tableName, filePattern, locSourceDir, archiveDir, hdfsArchiveDir, hdfsLandingDir, controlPattern
-    ).safe.run(conf)
+    ).run(conf)
 
     val args = s"$source/$domain/$tableName"
     result.foldAll(
@@ -189,7 +189,7 @@ trait Upload {
     val result =
       Upload.uploadImpl(tableName, filePattern, localIngestPath,
         localArchivePath, hdfsArchivePath, hdfsLandingPath,
-        controlPattern).safe.run(conf)
+        controlPattern).run(conf)
 
     result.foldAll(
       _         => logger.info(s"Custom upload ended from $localIngestPath"),
