@@ -60,6 +60,13 @@ object Partition {
       (dt.getYear.toString, f"${dt.getMonthOfYear}%02d", f"${dt.getDayOfMonth}%02d", f"${dt.getHourOfDay}%02d")
     }, "%s/%s/%s/%s")
 
+  /** Partition by static column, year, month, day for a given dateFormat. */
+  def byFieldPlusDate[A](staticField: (String, String), date: Field[A, String], dateFormat: String = "y-M-d"): Partition[A, (String, String, String, String)] =
+    Partition(List(staticField._1, "year", "month", "day"), v => {
+      val dt = DateTimeFormat.forPattern(dateFormat).parseDateTime(date.get(v))
+      (staticField._2, dt.getYear.toString, f"${dt.getMonthOfYear}%02d", f"${dt.getDayOfMonth}%02d")
+    }, "%s/%s/%s/%s")
+
   /**
     * Prepends `partition_` to column names to avoid clashes between core columns and members of the
     * thrift struct.
