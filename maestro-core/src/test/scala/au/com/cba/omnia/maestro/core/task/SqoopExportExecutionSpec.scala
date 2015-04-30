@@ -20,11 +20,17 @@ import scala.util.Failure
 import scala.io.Source
 
 import scalikejdbc.{SQL, ConnectionPool, AutoSession}
-import au.com.cba.omnia.parlour.SqoopSyntax.{ParlourExportDsl,TeradataParlourExportDsl}
 
+import com.twitter.scalding.{TextLine, TypedPipe}
+
+import au.com.cba.omnia.parlour.SqoopSyntax.{ParlourExportDsl,TeradataParlourExportDsl}
 
 import au.com.cba.omnia.thermometer.core.Thermometer._
 import au.com.cba.omnia.thermometer.core.ThermometerSpec
+
+import au.com.cba.omnia.maestro.core.split.Splitter
+import au.com.cba.omnia.maestro.core.codec.Encode
+import au.com.cba.omnia.maestro.core.thrift.humbug.Exhaustive
 
 object SqoopExportExecutionSpec
   extends ThermometerSpec
@@ -37,6 +43,7 @@ object SqoopExportExecutionSpec
   Fails if sqlQuery set and need to delete all existing rows $endToEndExportWithQuery
   Fails with Teradata connection manager                     $endToEndExportWithTeradataConnMan
   Succeeds with Teradata after connection manager reset      $endToEndExportWithTeradataResetConnMan
+  Export pipe                                                $endToEndExportPipe
 
 """
   val connectionString = "jdbc:hsqldb:mem:sqoopdb"
@@ -65,6 +72,16 @@ object SqoopExportExecutionSpec
       executesOk(sqoopExport(config, exportDir))
       tableData(connectionString, username, password, table) must containTheSameElementsAs(newCustomers ++ oldCustomers)
     }
+  }
+
+  def endToEndExportPipe = {
+    val table = s"testobj_export_${UUID.randomUUID.toString.replace('-', '_')}"
+    testObjTableSetup(connectionString, username, password, table)
+
+    val config = SqoopExportConfig(options(table))
+    val pipe = TypedPipe.from[Exhaustive](testObjects)
+    executesOk(sqoopExport(config, pipe))
+    testObjTableData(connectionString, username, password, table) must containTheSameElementsAs(testObjects.map(Encode.encode("", _).mkString("|")))
   }
 
   def endToEndExportWithDeleteTest = {
@@ -160,4 +177,79 @@ object SqoopExportExecutionSpec
     SQL(s"select * from $table").map(rs => List(rs.int("id"), rs.string("name"), rs.string("accr"),
       rs.string("cat"), rs.string("sub_cat"), rs.int("balance")) mkString "|").list.apply()
   }
+  
+  def testObjTableSetup(
+    connectionString: String,
+    username: String,
+    password: String,
+    table: String
+  ): Unit = {
+    ConnectionPool.singleton(connectionString, username, password)
+    implicit val session = AutoSession
+    SQL(s"""
+      create table $table (
+        stringField varchar(255) not null,
+        booleanField boolean not null,
+        intField integer not null,
+        longField bigint not null,
+        doubleField double not null,
+        optIntField integer,
+        optStringField varchar(255)
+      )
+    """).execute.apply()
+
+  }
+
+  def testObjTableData(
+    connectionString: String,
+    username:         String,
+    password:         String,
+    table:            String
+  ): List[String] = {
+    ConnectionPool.singleton(connectionString, username, password)
+    implicit val session = AutoSession
+    SQL(s"select * from $table").map(rs => List(rs.string("stringField"), rs.boolean("booleanField"), rs.int("intField"),
+      rs.long("longField"), rs.double("doubleField"), rs.intOpt("optIntField").getOrElse(""), rs.stringOpt("optStringField").getOrElse("")) mkString "|").list.apply()
+  }
+  
+  def testObjects = {
+    def create (
+      str:    String,
+      bool:   Boolean,
+      int:    Int, 
+      long:   Long, 
+      double: Double, 
+      optInt: Option[Int],
+      optStr: Option[String]
+    ): Exhaustive = { 
+      val x = new Exhaustive
+      x.myString    = str
+      x.myBoolean   = bool
+      x.myInt       = int
+      x.myLong      = long
+      x.myDouble    = double
+      x.myOptInt    = optInt
+      x.myOptString = optStr
+      x
+    }
+    val x1 = create("Foo", false, 1, Math.pow(2,32).toLong, 3.14, Some(1), Some("bar"))
+    val x2 = create("Bar", true, 2, Math.pow(3,32).toLong, 2.71, None, None)
+    val x3 = create("FooBar", true, 3, Math.pow(3,32).toLong, 2.71, None, Some("foobar"))
+    x1 :: x2 :: x3 :: Nil
+  }
+
+  implicit def encoder: Encode[Exhaustive] = {
+    Encode((none, a) => 
+      List(
+        Encode.encode[String](none, a._1), 
+        Encode.encode[Boolean](none, a._2),
+        Encode.encode[Int](none, a._3),
+        Encode.encode[Long](none, a._4),
+        Encode.encode[Double](none, a._5),
+        Encode.encode[Option[Int]](none, a._6),
+        Encode.encode[Option[String]](none, a._7)
+      ).flatten
+    )
+  }
+
 }

@@ -85,9 +85,10 @@ object build extends Build {
        standardSettings
     ++ uniformThriftSettings
     ++ uniform.project("maestro-core", "au.com.cba.omnia.maestro.core")
+    ++ humbugSettings
     ++ Seq[Sett](
-      scroogeThriftSourceFolder in Test <<=
-        (sourceDirectory) { _ / "test" / "thrift" / "scrooge" },
+      scroogeThriftSourceFolder in Test <<= (sourceDirectory) { _ / "test" / "thrift" / "scrooge" },
+      humbugThriftSourceFolder in Test <<= (sourceDirectory) { _ / "test" / "thrift" / "humbug" },
       libraryDependencies ++=
         depend.scalaz() ++ depend.scalding()
         ++ depend.hadoopClasspath

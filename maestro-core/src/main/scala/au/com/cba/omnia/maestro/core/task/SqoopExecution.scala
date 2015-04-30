@@ -39,8 +39,13 @@ import com.cba.omnia.edge.source.compressible.CompressibleTypedTsv
 import au.com.cba.omnia.parlour.SqoopSyntax.{ParlourExportDsl, ParlourImportDsl}
 import au.com.cba.omnia.parlour.{SqoopExecution => ParlourExecution, ParlourExportOptions, ParlourImportOptions, ParlourOptions}
 
+import au.com.cba.omnia.permafrost.hdfs.Hdfs
+
 import au.com.cba.omnia.maestro.core.scalding.StatKeys
+import au.com.cba.omnia.maestro.core.codec.Encode
+import au.com.cba.omnia.maestro.core.split.Splitter
 import au.com.cba.omnia.maestro.core.scalding.ExecutionOps._
+
 
 /**
   * Configuration options for sqoop import
@@ -201,6 +206,27 @@ trait SqoopExecution {
     config: SqoopExportConfig[T], exportDir: String
   ): Execution[Unit] =
     SqoopEx.exportExecution(config.copy(options = config.options.exportDir(exportDir)))
+  
+  /** Exports data from a TypedPipe to a DB via Sqoop.
+    *
+    * The provided TypedPipe is flushed to a temporary location on-disk before writing.
+    */
+  def sqoopExport[T <: ParlourExportOptions[T], A : Encode](
+    config: SqoopExportConfig[T],
+    pipe:   TypedPipe[A]
+  ): Execution[Unit] = {
+      val sep = config.options.getInputFieldsTerminatedBy.getOrElse('|').toString
+      val nul = config.options.getInputNullString.getOrElse("null").toString
+
+      for {
+        dir <- Execution.fromHdfs{ Hdfs.createTempDir(config.options.getTableName.mkString) }
+        _   <- pipe.map(Encode.encode(nul, _))
+                 .map(_.mkString(sep))
+                 .writeExecution(TypedPsv(dir.toString))
+        _   <- sqoopExport(config, dir.toString)
+        _   <- Execution.fromHdfs{ Hdfs.delete(dir, true) }
+      } yield ()
+  }
 }
 
 /** Methods to support testing Sqoop execution */
