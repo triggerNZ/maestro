@@ -25,6 +25,11 @@ case class GuardFilter(filter: (FileSystem, Path) => Boolean) {
     GuardFilter((fs, p) => filter(fs, p) && that.filter(fs, p))
 }
 
+/**
+ * (DEPRECATED) Utililty functions that operate on the Hadoop filesystem
+ *
+ * <i>Use</i> [[MaestroHdfs]] <i>instead (same method names, but return type is Hdfs).</i>
+ */
 object Guard {
   /** Filter out any directories that HAVE a _PROCESSED file. */
   val NotProcessed = GuardFilter((fs, p) => !fs.exists(new Path(p, "_PROCESSED")))

@@ -23,7 +23,105 @@ import au.com.cba.omnia.permafrost.hdfs.Hdfs
 import Guard.{NotProcessed, IngestionComplete}
 
 /**
- * Utility functions for Hdfs monad (the au.com.cba.omnia.permafrost.hdfs.Hdfs), with a maestro flavour.
+ * Utility functions for Hdfs monad
+ * (<a href="https://commbank.github.io/permafrost/latest/api/index.html#au.com.cba.omnia.permafrost.hdfs.Hdfs">
+ * au.com.cba.omnia.permafrost.hdfs.Hdfs</a>), with a Maestro flavour.
+ *
+ * This object was introduced in Maestro 2.10 to replace the [[Guard]] object, which served a similar purpose but
+ * predated the Hdfs monad. [[Guard]] is now deprecated and <i>will be removed</i> in a future version. Users of
+ * Maestro should update any code which uses [[Guard]] to use [[MaestroHdfs]] instead.
+ *
+ * <strong>Migration guide from Guard to MaestroHdfs</strong>
+ *
+ * [[MaestroHdfs]] provides all the same functions as [[Guard]], with the same parameters, but instead of performing
+ * the work immediately it returns an
+ * <a href="https://commbank.github.io/permafrost/latest/api/index.html#au.com.cba.omnia.permafrost.hdfs.Hdfs">
+ * Hdfs</a> action. This can be composed with other Hdfs actions into a more complex workflow. Alternatively, it
+ * can be composed with other <a href="http://twitter.github.io/scalding/index.html#com.twitter.scalding.Execution">
+ * Execution</a> actions, with the help of `Execution.fromHdfs`.
+ *
+ * Let's look at the `etl.gcps-gcps` project as an example.
+ *
+ * {{{
+ * // old code
+ * case class GcpsConfig[T <: ThriftStruct : Decode : Tag : Manifest](...)
+ * {
+ *   ...
+ *   val inputs = Guard.expandTransferredPaths(s"${maestro.hdfsRoot}/source/${maestro.source}/${maestro.tablename}/*/*/*")
+ * }}}
+ *
+ * Notice that `Guard.expandTransferredPaths` executes immediately <i>when the class is instantiated</i>, which is a
+ * hidden side-effect. The benefit of the `Hdfs` monad is that it allows us to reason more easily about the order in
+ * which operations are performed.
+ *
+ * We can rewrite this line simply by changing `Guard` to `MaestroHdfs`, and changing the name of the `val` to
+ * make it clear that this is now an <i>action</i> rather than a simple value:
+ *
+ * {{{
+ * // new code
+ * case class GcpsConfig[T <: ThriftStruct : Decode : Tag : Manifest](...)
+ * {
+ *   ...
+ *   val findInputs = MaestroHdfs.expandTransferredPaths(s"${maestro.hdfsRoot}/source/${maestro.source}/${maestro.tablename}/*/*/*")
+ * }}}
+ *
+ * Later in the file, we see where `inputs` was being used:
+ *
+ * {{{
+ * // old code
+ * def run[T <: ThriftStruct : Decode : Tag : Manifest](
+ *   tableName      : String,
+ *   partitionField : Field[T, String],
+ *   loadWithKey    : Boolean = false
+ * ): Execution[JobStatus] = for {
+ *     conf             <- Execution.getConfig.map(GcpsConfig(_, tableName, partitionField, loadWithKey))
+ *     (pipe, loadInfo) <- load[T](conf.load, conf.inputs)                                                                    // here
+ *     _                <- viewHive(conf.hiveTable, pipe)
+ *     _                <- Execution.from(Guard.createFlagFile(conf.inputs))                                                  // and here
+ *     _                <- Execution.fromHdfs { Hdfs.write(Hdfs.path(conf.processingPathFile), conf.inputs.mkString("\n")) }  // and here too
+ *   } yield JobFinished
+ * }}}
+ *
+ * The new `findInputs` action can be run as part of this `Execution` block, by using `Execution.fromHdfs`. The same is
+ * true for the call to `Guard.createFlagFile`.
+ *
+ * {{{
+ * // new code (alternative 1)
+ * def run[T <: ThriftStruct : Decode : Tag : Manifest](
+ *   tableName      : String,
+ *   partitionField : Field[T, String],
+ *   loadWithKey    : Boolean = false
+ * ): Execution[JobStatus] = for {
+ *     conf             <- Execution.getConfig.map(GcpsConfig(_, tableName, partitionField, loadWithKey))
+ *     inputs           <- Execution.fromHdfs(conf.findInputs)                                                                // new line
+ *     (pipe, loadInfo) <- load[T](conf.load, inputs)                                                                         // edited
+ *     _                <- viewHive(conf.hiveTable, pipe)
+ *     _                <- Execution.fromHdfs { MaestroHdfs.createFlagFile(inputs) }                                          // edited
+ *     _                <- Execution.fromHdfs { Hdfs.write(Hdfs.path(conf.processingPathFile), inputs.mkString("\n")) }       // edited
+ *   } yield JobFinished
+ * }}}
+ *
+ * Equivalently, we could sequence the last two actions inside the `Hdfs` monad, as follows:
+ *
+ * {{{
+ * // new code (alternative 2)
+ * def run[T <: ThriftStruct : Decode : Tag : Manifest](
+ *   tableName      : String,
+ *   partitionField : Field[T, String],
+ *   loadWithKey    : Boolean = false
+ * ): Execution[JobStatus] = for {
+ *     conf             <- Execution.getConfig.map(GcpsConfig(_, tableName, partitionField, loadWithKey))
+ *     inputs           <- Execution.fromHdfs(conf.findInputs)
+ *     (pipe, loadInfo) <- load[T](conf.load, inputs)
+ *     _                <- viewHive(conf.hiveTable, pipe)
+ *     _                <- Execution.fromHdfs {                                                                               // edited
+ *                           MaestroHdfs.createFlagFile(inputs) >>                                                            // ...
+ *                           Hdfs.write(Hdfs.path(conf.processingPathFile), inputs.mkString("\n"))                            // ...
+ *                         }                                                                                                  // ...
+ *   } yield JobFinished
+ * }}}
+ *
+ * For more advice on refactoring code to use [[MaestroHdfs]], speak to Todd Owen at desk W.04.106.
  */
 object MaestroHdfs {
   /** Expands the globs in the provided path and only keeps those directories that pass the filter. */

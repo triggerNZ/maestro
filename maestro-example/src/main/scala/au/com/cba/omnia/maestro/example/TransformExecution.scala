@@ -61,7 +61,7 @@ object TransformExecution {
     )
     for {
       conf                <- Execution.getConfig.map(TransformConfig(_))
-      files               <- Execution.from(Guard.expandPaths(conf.inputGlob))
+      files               <- Execution.fromHdfs(MaestroHdfs.expandPaths(conf.inputGlob))
       (customers, ldInfo) <- load[Customer](conf.load, files)
       accounts             = customers.map(customerToAccount.run)
       loadSuccess         <- ldInfo.withSuccess
