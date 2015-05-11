@@ -74,6 +74,21 @@ case class PartitionedHiveTable[A <: ThriftStruct : Manifest, B : Manifest : Tup
       if (append) ConfHelper.createUniqueFilenames(config)
       else        config
 
+    /* TODO: https://github.com/CommBank/maestro/issues/382
+
+     * make a new exec that writesto a PartitionParquetScroogeSink (if such a thing exists?) and
+         writes to a different dir,
+     * then for any partitions that were newly created:
+       * remove the existing partitions of the same names in the old table
+       * copy in the new one
+       * create a new parquet table based off the modified structure if there was no table before,
+           else if copying into an existing table,
+             do an MSCK REPAIR TABLE as a shortcut, or
+                more correctly look at the hive docs about how to add partitions
+
+        -- createTable will throw an error if the table already exists but has different schema,
+           in which case fail the whole job (propagate that erorr, already done)
+     */
     val execution = 
       pipe
         .map(v => partition.extract(v) -> v)
