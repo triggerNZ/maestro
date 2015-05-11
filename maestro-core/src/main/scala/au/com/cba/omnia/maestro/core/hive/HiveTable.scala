@@ -70,9 +70,7 @@ case class PartitionedHiveTable[A <: ThriftStruct : Manifest, B : Manifest : Tup
     PartitionHiveParquetScroogeSource[A](database, table, partitionMetadata)
 
   override def writeExecution(pipe: TypedPipe[A], append: Boolean = true): Execution[ExecutionCounters] = {
-    def modifyConfig(config: Config) =
-      if (append) ConfHelper.createUniqueFilenames(config)
-      else        config
+    def modifyConfig(config: Config) = ConfHelper.createUniqueFilenames(config)
 
     /* TODO: https://github.com/CommBank/maestro/issues/382
 
