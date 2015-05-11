@@ -40,6 +40,7 @@ View execution properties
     view executions can be composed with zip                $zipped
 
     can write to a hive table using execution monad         $normalHive
+    can overwrite to a hive table using execution monad     $normalHiveOverwrite
     can append to a hive table using execution monad        $normalHiveAppend
     view hive executions can be composed with flatMap       $flatMappedHive
     view hive executions can be composed with zip           $zippedHive
@@ -78,6 +79,19 @@ View execution properties
     facts(
       hiveWarehouse </> "normalhive.db" </> "by_first" </> "partition_first=A" </> "part-*.parquet" ==> matchesFile,
       hiveWarehouse </> "normalhive.db" </> "by_first" </> "partition_first=B" </> "part-*.parquet" ==> matchesFile
+    )
+  }
+
+  def normalHiveOverwrite = {
+    val exec = for {
+      c1 <- ViewExec.viewHive(tableByFirst("normalHive"), source)
+      c2 <- ViewExec.viewHive(tableByFirst("normalHive"), source2, false)
+    } yield (c1, c2)
+
+    executesSuccessfully(exec) must_== ((4, 2))
+    facts(
+      hiveWarehouse </> "normalhive.db" </> "by_first" </> "partition_first=A" </> "part-*.parquet" ==> noMatch,
+      hiveWarehouse </> "normalhive.db" </> "by_first" </> "partition_first=B" </> "part-*.parquet" ==> recordCount(ParquetThermometerRecordReader[StringPair], 2)
     )
   }
 
@@ -189,5 +203,12 @@ View execution properties
     StringPair("B", "2")
   )
 
+  def source2 = ThermometerSource(data2)
+  def data2 = List(
+    StringPair("B", "11"),
+    StringPair("B", "22")
+  )
+
   def matchesFile = PathFactoid((context, path) => !context.glob(path).isEmpty)
+  def noMatch = PathFactoid((context, path) => context.glob(path).isEmpty)
 }
