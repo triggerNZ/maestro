@@ -63,12 +63,26 @@ trait ViewExecution {
     */
   def viewHive[A <: ThriftStruct : Manifest, ST](
     table: HiveTable[A, ST], pipe: TypedPipe[A], append: Boolean = true
-  ): Execution[Long] = for {
-    /* Creates the database upfront since when Hive is run concurrently uzing `zip` all but the
-     * first attempt fails.
-     * The Hive monad handles this so that the job doesn't fall over.
-     */
-    _ <- Execution.fromHive(Hive.createDatabase(table.database))
-    n <- table.writeExecution(pipe, append).map(_.get(StatKeys.tuplesWritten).getOrElse(0L))
-  } yield n
+  ): Execution[Long] =
+    if (append) {
+      println("APPEND")
+      for {
+        /* Creates the database upfront since when Hive is run concurrently uzing `zip` all but the
+         * first attempt fails.
+         * The Hive monad handles this so that the job doesn't fall over.
+         */
+        _ <- Execution.fromHive(Hive.createDatabase(table.database))
+        n <- table.writeExecution(pipe, append).map(_.get(StatKeys.tuplesWritten).getOrElse(0L))
+      } yield n
+    } else {
+      println("NOT APPEND")
+      for {
+        /* Creates the database upfront since when Hive is run concurrently uzing `zip` all but the
+         * first attempt fails.
+         * The Hive monad handles this so that the job doesn't fall over.
+         */
+        _ <- Execution.fromHive(Hive.createDatabase(table.database))
+        n <- table.writeExecution(pipe, append).map(_.get(StatKeys.tuplesWritten).getOrElse(0L))
+      } yield n
+    }
 }

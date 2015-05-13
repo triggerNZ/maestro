@@ -87,14 +87,82 @@ case class PartitionedHiveTable[A <: ThriftStruct : Manifest, B : Manifest : Tup
         -- createTable will throw an error if the table already exists but has different schema,
            in which case fail the whole job (propagate that erorr, already done)
      */
-    val execution = 
-      pipe
-        .map(v => partition.extract(v) -> v)
-        .writeExecution(PartitionHiveParquetScroogeSink[B, A](database, table, partitionMetadata, externalPath, append))
-        .getAndResetCounters
-        .map(_._2)
 
-    execution.withSubConfig(modifyConfig)
+    // Creates the hive table and gets its path
+    val setup = Execution.fromHive(
+      Hive.createParquetTable[A](database, table, partitionMetadata, externalPath.map(new Path(_))) >>
+      Hive.getPath(database, table)
+    )
+
+/*
+    def tableDescriptor(path: Option[Path]) =
+      Util.createHiveTableDescriptor[A](database, table, partitionMetadata, ParquetFormat, path)
+      */
+
+    // Runs the scalding job and gets the counters
+    def write(path: Option[String]) = pipe
+      .map(v => partition.extract(v) -> v)
+      .writeExecution(PartitionHiveParquetScroogeSink[B, A](database, table, partitionMetadata, path, append))
+      .getAndResetCounters
+      .map(_._2)
+
+    if (append) {
+      val execution = write(externalPath)
+      execution.withSubConfig(modifyConfig)
+    } else {
+    /*
+      val execution = write(externalPath)
+      execution.withSubConfig(identity)
+      */
+
+/*
+      for {
+        _ <- setup
+        counters <- write(externalPath)
+      } yield counters
+      */
+
+      Execution.from(println(s"externalPath: $externalPath")) >>
+      Execution.fromHdfs(Hdfs.createTempDir()).bracket(
+        //tmpDir => Execution.fromHdfs(Hdfs.delete(tmpDir, true))
+        tmpDir => Execution.from(println(tmpDir))
+      )(
+        tmpDir => for {
+          dst <- setup
+
+          _ <- Execution.from(println("dst: " + dst.toString))
+
+          // get leaf dir list of dst
+          oldFiles <- Execution.fromHdfs(Hdfs.files(dst, "*.parquet"))
+          _ <- Execution.from(println("oldFiles: " + oldFiles))
+
+          counters <- write(externalPath)
+          // get leaf dir list of dst, compare to previous and remove old parquet files
+          // in partitions that existed earlier
+        } yield counters
+      )
+
+/*
+      def moveFiles(src: Path, dst: Path): Hdfs[Unit] = for {
+        files <- Hdfs.files(src, "*.parquet")
+        time  =  System.currentTimeMillis
+        _     <- Hdfs.mkdirs(dst)
+        _     <- files.zipWithIndex.traverse {
+                   case (file, idx) => Hdfs.move(file, new Path(dst, f"part-$time-$idx%05d.parquet"))
+                 }
+      } yield ()
+
+      setup.flatMap(dst => Execution.fromHdfs(Hdfs.createTempDir()).bracket(
+        tmpDir => Execution.fromHdfs(Hdfs.delete(tmpDir, true))
+      )(
+        tmpDir => for {
+          counters <- write(Some(tmpDir.toString))
+          _        <- Execution.fromHdfs(moveFiles(tmpDir, dst))
+          //_        <- Execution.fromHive(Hive.query(s"MSCK REPAIR TABLE $table"))
+        } yield counters
+      ))
+      */
+    }
   }
 }
 
