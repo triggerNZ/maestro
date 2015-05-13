@@ -27,22 +27,22 @@ AutomapSpec
 ==================
 
   Transforms
-    can transform one struct to another without manual operations $autoTransform
-    can transform one struct to another with manual operations $manualTransform
+    can transform one struct to another without manual operations        $autoTransform
+    can transform one struct to another with manual operations           $manualTransform
 
   Humbug generated Thrift structures
-    can be joined                                                                                  $joinHumbug
-    can handle multiple equal input fields                                                         $multipleEqualSourcesHumbug
-    throws exception when encountering multiple differing input fields                             $multipleDifferingSourcesHumbug
+    can be joined                                                        $joinHumbug
+    can handle multiple equal input fields                               $multipleEqualSourcesHumbug
+    throws exception when encountering multiple differing input fields   $multipleDifferingSourcesHumbug
 
   Scrooge generated Thrift structures
-    can be joined                                                                                  $joinScrooge
-    can handle multiple equal input fields                                                         $multipleEqualSourcesScrooge
-    throws exception when encountering multiple differing input fields                             $multipleDifferingSourcesScrooge
+    can be joined                                                        $joinScrooge
+    can handle multiple equal input fields                               $multipleEqualSourcesScrooge
+    throws exception when encountering multiple differing input fields   $multipleDifferingSourcesScrooge
 
   Combined Humbug and Scrooge Thrift structures
-    can join Scrooge and Humbug to Humbug                                                          $mixedToHumbug
-    can join Scrooge and Humbug to Scrooge                                                         $mixedToScrooge
+    can join Scrooge and Humbug to Humbug                                $mixedToHumbug
+    can join Scrooge and Humbug to Scrooge                               $mixedToScrooge
 
 """
 
@@ -68,11 +68,11 @@ AutomapSpec
     s3.longField = types.longField
     s3.intField  = types.intField
 
-    @automap def hToOne(x: HTypes): SubOne = ()
+    @automap def hToOne(x: HTypes): SubOne = {}
     hToOne(types) must_== s1
-    @automap def hToTwo(x: HTypes): SubTwo = ()
+    @automap def hToTwo(x: HTypes): SubTwo = {}
     hToTwo(types) must_== s2
-    @automap def hToThree(x: HTypes): SubThree = ()
+    @automap def hToThree(x: HTypes): SubThree = {}
     hToThree(types) must_== s3
   }
 
@@ -86,13 +86,13 @@ AutomapSpec
     s2.longField   = types.longField - 1
     s2.doubleField = types.doubleField
 
-    @automap def hToOne(x: HTypes): SubOne = (
+    @automap def hToOne(x: HTypes): SubOne = {
       booleanField := !x.booleanField
-    )
-    @automap def hToTwo(x: HTypes): SubTwo = (
-      intField  := x.intField + 1,
+    }
+    @automap def hToTwo(x: HTypes): SubTwo = {
+      intField  := x.intField + 1
       longField := x.longField - 1
-    )
+    }
 
     hToOne(types) must_== s1
     hToTwo(types) must_== s2
@@ -137,7 +137,7 @@ AutomapSpec
 
 
   def joinHumbug = {
-    @automap def join(x: JoinOneHumbug, y: JoinTwoHumbug): JoinableHumbug = ()    
+    @automap def join(x: JoinOneHumbug, y: JoinTwoHumbug): JoinableHumbug = {}
 
     val resultJoined = new JoinableHumbug
     resultJoined.booleanField = true
@@ -147,14 +147,14 @@ AutomapSpec
   }
 
   def joinScrooge = {
-    @automap def join(x: JoinOneScrooge, y: JoinTwoScrooge): JoinableScrooge = ()    
+    @automap def join(x: JoinOneScrooge, y: JoinTwoScrooge): JoinableScrooge = {}
 
     val resultJoined = JoinableScrooge(true, 1000, 42)
     join((scroogeStructOne, scroogeStructTwo)) must beEqualTo(resultJoined)
   }
 
   def multipleEqualSourcesHumbug = {
-    @automap def join(x: JoinOneHumbug, y: JoinTwoHumbug, z: JoinOneDuplicateHumbug): JoinableHumbug = ()    
+    @automap def join(x: JoinOneHumbug, y: JoinTwoHumbug, z: JoinOneDuplicateHumbug): JoinableHumbug = {}
 
     val resultJoined          = new JoinableHumbug
     resultJoined.booleanField = true
@@ -164,26 +164,26 @@ AutomapSpec
   }
 
   def multipleEqualSourcesScrooge = {
-    @automap def join(x: JoinOneScrooge, y: JoinTwoScrooge, z: JoinOneDuplicateScrooge): JoinableScrooge = ()
+    @automap def join(x: JoinOneScrooge, y: JoinTwoScrooge, z: JoinOneDuplicateScrooge): JoinableScrooge = {}
 
     val resultJoined = JoinableScrooge(true, 1000L, 42)
     join((scroogeStructOne, scroogeStructTwo, scroogeDuplicateOk)) must_== resultJoined
   }
 
   def multipleDifferingSourcesHumbug = {
-    @automap def join (x: JoinOneHumbug, y: JoinTwoHumbug, z: JoinOneDuplicateHumbug): JoinableHumbug = ()
+    @automap def join (x: JoinOneHumbug, y: JoinTwoHumbug, z: JoinOneDuplicateHumbug): JoinableHumbug = {}
 
     join((humbugStructOne, humbugStructTwo, humbugDuplicateBad)) must throwAn[IllegalArgumentException]
   }
 
   def multipleDifferingSourcesScrooge = {
-    @automap def join (x: JoinOneScrooge, y: JoinTwoScrooge, z: JoinOneDuplicateScrooge): JoinableScrooge = ()
+    @automap def join (x: JoinOneScrooge, y: JoinTwoScrooge, z: JoinOneDuplicateScrooge): JoinableScrooge = {}
 
     join((scroogeStructOne, scroogeStructTwo, scroogeDuplicateBad)) must throwAn[IllegalArgumentException]
   }
 
   def mixedToHumbug = {
-    @automap def join(x: JoinOneScrooge, y: JoinTwoHumbug): JoinableHumbug = ()
+    @automap def join(x: JoinOneScrooge, y: JoinTwoHumbug): JoinableHumbug = {}
 
     val resultJoined = new JoinableHumbug
     resultJoined.booleanField = true
@@ -193,7 +193,7 @@ AutomapSpec
   }
 
   def mixedToScrooge = {
-    @automap def join (x: JoinOneHumbug, y: JoinTwoScrooge): JoinableScrooge = ()
+    @automap def join (x: JoinOneHumbug, y: JoinTwoScrooge): JoinableScrooge = {}
 
     val resultJoined = JoinableScrooge(true, 1000, 42)
     join((humbugStructOne, scroogeStructTwo)) must beEqualTo(resultJoined)

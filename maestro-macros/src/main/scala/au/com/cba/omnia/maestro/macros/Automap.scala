@@ -27,14 +27,14 @@ import scala.collection.immutable.StringOps
   * If more than one such input candidate exists, all structs with a field by this name must
   * agree on its value, otherwise a runtime exception is raised.
   *
-  * To use the automapper, declare a method with the desired signature, assign to it a tuple of
-  * transformation rules and annotate it with @automapper. The macro fills in the method with
-  * the required logic. A simple use of the automapper annotation macro might look like this:
+  * To use the automapper, declare a method with the desired signature, assign to it a block of
+  * transformation rules and annotate it with @automapper. The macro fills in the method with the
+  * required logic. A simple use of the automapper annotation macro might look like this:
   * 
-  *   @automapper def mkFooBar (foo: Foo, bar: Bar): FooBar = (
-  *       thisInt    := foo.thatInt,
+  *   @automap def mkFooBar (foo: Foo, bar: Bar): FooBar = {
+  *       thisInt    := foo.thatInt
   *       thisString := bar.thatString
-  *   )
+  *   }
   *
   * For a FooBar which has an `x` in common with Foo and a `y` in common with both Foo and Bar, the
   * generated code will take one of two forms, depending on the Thrift implementation of the output
@@ -215,7 +215,11 @@ object automap {
         
     /** Pull apart the source object, pad it out, put it back together. */
     def mkMapper(src: Tree): Tree = {
-      val q"def $name (..$srcArgs): $srcTo = (..$srcRules)" = src
+      val q"def $name (..$srcArgs): $srcTo = $srcBody" = src
+      val srcRules = srcBody match {
+        case Block(xs,x)  => x :: xs
+        case _            => Nil
+      }
 
       val (from, inputs) = srcArgs.map{ case q"$m val $x: $t = $v" => inspectTermType(t, x) }.unzip
       val (to, outputs)  = inspectTermType(srcTo, newTermName("out"))
