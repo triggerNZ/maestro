@@ -43,12 +43,12 @@ case class CustomerJobConfig(config: Config) {
 /** Customer file load job with an execution for the main program */
 object CustomerJob extends MaestroJob {
   def job: Execution[JobStatus] = {
-    @automap def customerToAccount (x: Customer): Account = (
-      id           := x.acct,
-      customer     := x.id,
-      balance      := x.balance / 100,
+    @automap def customerToAccount (x: Customer): Account = {
+      id           := x.acct
+      customer     := x.id
+      balance      := x.balance / 100
       balanceCents := x.balance % 100
-    )
+    }
     for {
       conf             <- Execution.getConfig.map(CustomerJobConfig(_))
       uploadInfo       <- upload(conf.upload)
