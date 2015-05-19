@@ -121,12 +121,14 @@ object build extends Build {
        standardSettings
     ++ uniform.project("maestro-macros", "au.com.cba.omnia.maestro.macros")
     ++ Seq[Sett](
-         libraryDependencies <++= scalaVersion.apply(sv => Seq(
-           "org.scala-lang"   % "scala-compiler" % sv
-         , "org.scala-lang"   % "scala-reflect"  % sv
-         , "org.scalamacros" %% "quasiquotes"    % "2.0.0"
+         ivyConfigurations += config("compileonly").hide
+         , libraryDependencies <++= scalaVersion.apply(sv => Seq(
+           "org.scala-lang"   % "scala-compiler" % sv % "compileonly"
+         , "org.scala-lang"   % "scala-reflect"  % sv % "compileonly"
+         , "org.scalamacros" %% "quasiquotes"    % "2.0.0" % "compileonly"
          , "com.twitter"      % "util-eval_2.10" % "6.3.8" % Test
          ) ++ depend.testing())
+       , unmanagedClasspath in Compile ++= update.value.select(configurationFilter("compileonly"))
        , addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full)
     )
   ).dependsOn(core)
